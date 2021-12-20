@@ -31,4 +31,5 @@ Known problems:
 1.  Finance.yahoo.com returns not always correct time series. The time series of NVDA (NVIDIA) were found to have the split inside. Therefore, the NVIDIA time series at German market (NVD.DE) were taken instead. It is very important to check the time series manually visually on the graph by selecting desired ticker from the dropdown list (cells Q1:T1).
 2. Time series for one year are taken (TimeSeriesLength_days = 365). This parameter can be increased / decreased only in case of tickers from finance.yahoo.com. If you are using the time series also from ariva.de, the time series for one year will be taken. This can be corrected, but needs more time.
 3. Calculation of risk tolerance for manually changed assets weights is not performed. So, if you will press "Recalculate portfolio characteristics", the value of risk tolerance will be set to "undefined".
+4. 0% risk free rate is used in Sharpe ratio calculations.
 
