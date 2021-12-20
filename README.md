@@ -2,8 +2,8 @@
 The algorithm takes time series from finance.yahoo.com and / or ariva.de and plots an efficient frontier curve as a function of risk tolerance. The portfolio with maximal Sharpe ratio is supposed to be the best optimized portfolio. 
 The portfolio optimization calculations are based on [Matlab](web.stanford.edu/~wfsharpe/mat/gqp.txt) algorithm of William F. Sharpe. The basic article of William F. Sharpe: William F. Sharpe, "[An Algorithm for Portfolio Improvement](https://www.gsb.stanford.edu/faculty-research/working-papers/algorithm-portfolio-improvement)", in Advances in Mathematical Programming and Financial Planning, JAI Press, Inc., 1987, pp. 155-170.
 The portfolio optimization is performed in two steps:
-1 "1. Update inputs" – cleans sheets "Time series", "Covariation", "Returns" and takes time series for one year from finance.yahoo.com or ariva.de.
-2 "2. Optimize portfolio" – takes temporary data from "Time series", "Covariation", "Returns" and optimizes asset weights to plot efficient frontier curve. The portfolio with maximal Sharpe ratio is supposed to be the best optimized portfolio.
+1. "1. Update inputs" – cleans sheets "Time series", "Covariation", "Returns" and takes time series for one year from finance.yahoo.com or ariva.de.
+2. "2. Optimize portfolio" – takes temporary data from "Time series", "Covariation", "Returns" and optimizes asset weights to plot efficient frontier curve. The portfolio with maximal Sharpe ratio is supposed to be the best optimized portfolio.
 
 Inputs:
 - Tickers (column A): Contains tickers. This information is necessary only for finance.yahoo.com. If you want to use also the historical data from "ariva.de", then simply put here the WKN or other description to distinguish between the assets. The updating of time series is iterating through the assets until the empty cell in column A is reached.
@@ -28,7 +28,7 @@ Light violet: Value can be changed by script, but can be also changed by user (s
 Turquoise: Cell contains formula.
 
 Known problems:
-1  Finance.yahoo.com returns not always correct time series. The time series of NVDA (NVIDIA) were found to have the split inside. Therefore, the NVIDIA time series at German market (NVD.DE) were taken instead. It is very important to check the time series manually visually on the graph by selecting desired ticker from the dropdown list (cells Q1:T1).
-2 Time series for one year are taken (TimeSeriesLength_days = 365). This parameter can be increased / decreased only in case of tickers from finance.yahoo.com. If you are using the time series also from ariva.de, the time series for one year will be taken. This can be corrected, but needs more time.
-3 Calculation of risk tolerance for manually changed assets weights is not performed. So, if you will press "Recalculate portfolio characteristics", the value of risk tolerance will be set to "undefined".
+1.  Finance.yahoo.com returns not always correct time series. The time series of NVDA (NVIDIA) were found to have the split inside. Therefore, the NVIDIA time series at German market (NVD.DE) were taken instead. It is very important to check the time series manually visually on the graph by selecting desired ticker from the dropdown list (cells Q1:T1).
+2. Time series for one year are taken (TimeSeriesLength_days = 365). This parameter can be increased / decreased only in case of tickers from finance.yahoo.com. If you are using the time series also from ariva.de, the time series for one year will be taken. This can be corrected, but needs more time.
+3. Calculation of risk tolerance for manually changed assets weights is not performed. So, if you will press "Recalculate portfolio characteristics", the value of risk tolerance will be set to "undefined".
 
