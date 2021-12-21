@@ -20,7 +20,7 @@ Function GetAriva_Fund(url$, wkn$)
     
     If IsEmpty(SeleniumDriver_ariva) Then
         ' create new selenium driver
-        Set SeleniumDriver_ariva = CreateObject2("Selenium.EdgeDriver")
+        Set SeleniumDriver_ariva = CreateObject2("Selenium.ChromeDriver")
         SeleniumDriver_ariva.SetPreference "download.default_directory", Environ$("USERPROFILE") & "\Downloads\"
         
         seleniumStarted = True
