@@ -41,7 +41,7 @@ Function GetAriva_Fund(url$, wkn$)
 End Function
 
 Sub CloseSeleniumDriver()
-    If Not (SeleniumDriver_ariva Is Nothing) Then
+    If IsEmpty(SeleniumDriver_ariva) Then
         SeleniumDriver_ariva.Close
         SeleniumDriver_ariva.Quit
     End If
