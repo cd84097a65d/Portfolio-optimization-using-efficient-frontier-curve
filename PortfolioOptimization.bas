@@ -6,7 +6,7 @@ Const TimeSeriesLength_days = 365
 Dim wsTimeSeries As Worksheet
 
 Sub PortfolioOptimization()
-    Dim covarianceMatrix#(), inWeights#(), outWeights#(), expectedReturns_year#()
+    Dim covarianceMatrix#(), inWeights#(), outWeights#()
     Dim i&, j&, nAssets&, rt#, k&, nDays&, maxRT#, maxVariance#, sumWeights#
     Dim expectedReturns_day#()
     Dim return_#, variance#, sharpeRatio#, maxSharpeRatio#, maxWeights#(), maxReturn_year#
@@ -14,10 +14,11 @@ Sub PortfolioOptimization()
     Dim wsPortfolio As Worksheet
     Dim wsCovariance As Worksheet
     Dim wsEfficientFrontier As Worksheet
+    Dim wsReturns As Worksheet
     Dim bottomRow&
     
     Set wsPortfolio = ThisWorkbook.Worksheets("Portfolio")
-    Set wsTimeSeries = ThisWorkbook.Worksheets("Time series")
+    Set wsReturns = ThisWorkbook.Worksheets("Returns")
     Set wsCovariance = ThisWorkbook.Worksheets("Covariance")
     Set wsEfficientFrontier = ThisWorkbook.Worksheets("Efficient frontier")
     
@@ -34,15 +35,18 @@ Sub PortfolioOptimization()
     nAssets = i - 2
     
     ReDim covarianceMatrix(nAssets, nAssets): ReDim inWeights(nAssets): ReDim outWeights(nAssets)
-    ReDim expectedReturns_year(nAssets): ReDim expectedReturns_day(nAssets)
+    ReDim expectedReturns_day(nAssets)
     ReDim lbd(nAssets)
     ReDim ubd(nAssets)
     ReDim maxWeights(nAssets)
     
-    nDays = wsTimeSeries.Cells(1, Columns.Count).End(xlToLeft).Column - 1
+    nDays = wsReturns.Cells(2, Columns.Count).End(xlToLeft).Column - 1
     For i = 1 To nAssets
-        expectedReturns_year(i) = (wsTimeSeries.Cells(i + 1, nDays + 1) - wsTimeSeries.Cells(i + 1, 2)) / wsTimeSeries.Cells(i + 1, 2)
-        expectedReturns_day(i) = expectedReturns_year(i) / nDays
+        For j = 1 To nDays
+            expectedReturns_day(i) = expectedReturns_day(i) + wsReturns.Cells(i + 1, j + 1)
+        Next j
+        expectedReturns_day(i) = expectedReturns_day(i) / nDays
+        
         lbd(i) = wsPortfolio.Cells(i + 1, 3)
         ubd(i) = wsPortfolio.Cells(i + 1, 4)
         For j = 1 To nAssets
@@ -66,9 +70,9 @@ Sub PortfolioOptimization()
         
         wsPortfolio.Cells(i + 1, 5) = sharpeRatio
         
-        wsEfficientFrontier.Cells(k, 7) = variance * nDays
+        wsEfficientFrontier.Cells(k, 7) = (1# + variance) ^ nDays - 1#
         wsEfficientFrontier.Cells(k, 8) = sharpeRatio
-        wsEfficientFrontier.Cells(k, 9) = return_ * nDays
+        wsEfficientFrontier.Cells(k, 9) = (1# + return_) ^ nDays - 1#
         
         k = k + 1
     Next i
@@ -134,19 +138,19 @@ Sub PortfolioOptimization()
         
         Call CalculatePortfolioOutputs(nAssets, expectedReturns_day, outWeights, covarianceMatrix, nDays, return_, variance, sharpeRatio)
         
-        wsEfficientFrontier.Cells(k, 1) = variance * nDays
+        wsEfficientFrontier.Cells(k, 1) = (1# + variance) ^ nDays - 1#
         wsEfficientFrontier.Cells(k, 2) = rt
         wsEfficientFrontier.Cells(k, 3) = sharpeRatio
-        wsEfficientFrontier.Cells(k, 4) = return_ * nDays
+        wsEfficientFrontier.Cells(k, 4) = (1# + return_) ^ nDays - 1#
         
         If sharpeRatio > maxSharpeRatio Then
             For i = 1 To nAssets
                 maxWeights(i) = outWeights(i)
             Next i
-            maxReturn_year = return_ * nDays
+            maxReturn_year = (1# + return_) ^ nDays - 1#
             maxSharpeRatio = sharpeRatio
             maxRT = rt
-            maxVariance = variance * nDays
+            maxVariance = (1# + variance) ^ nDays - 1#
         End If
         
         k = k + 1
