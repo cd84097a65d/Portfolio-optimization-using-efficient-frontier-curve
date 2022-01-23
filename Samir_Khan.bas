@@ -95,3 +95,25 @@ Public Function getCookieCrumb() As Boolean
         End If:
     Next i
 End Function
+
+' In time series only close price is used.
+Sub ReadSharesTimeSeries(outDates_reference() As Date, outDates() As Date, inputTimeSeries#(), outTimeSeries#(), ticker$, outputLine&)
+    Dim i&, j&
+    
+    ReDim outTimeSeries(UBound(outDates_reference))
+    
+    For i = 1 To UBound(outDates)
+        ' search for
+        For j = 1 To UBound(outDates_reference)
+            ' look for the same dates:
+            If outDates(i) = outDates_reference(j) Then
+                If inputTimeSeries(i, 4) = Undefined Then
+                    outTimeSeries(j) = Undefined
+                Else
+                    outTimeSeries(j) = inputTimeSeries(i, 4)
+                End If
+                Exit For
+            End If
+        Next j
+    Next i
+End Sub

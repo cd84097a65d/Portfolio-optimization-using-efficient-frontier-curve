@@ -4,6 +4,10 @@ Option Explicit
 Const TimeSeriesLength_days = 365
 
 Dim wsTimeSeries As Worksheet
+Dim wsEfficientFrontier As Worksheet
+
+Dim totalCalls As Long
+Dim outputLiine&, nOptimizations&, nSparsing&
 
 Sub PortfolioOptimization()
     Dim covarianceMatrix#(), inWeights#(), outWeights#()
@@ -13,7 +17,6 @@ Sub PortfolioOptimization()
     Dim lbd#(), ubd#(), mixe#, mixsd#
     Dim wsPortfolio As Worksheet
     Dim wsCovariance As Worksheet
-    Dim wsEfficientFrontier As Worksheet
     Dim wsReturns As Worksheet
     Dim bottomRow&
     
@@ -24,8 +27,15 @@ Sub PortfolioOptimization()
     
     ScreenUpdatingOff
     
+    bottomRow = wsEfficientFrontier.Cells(Rows.Count, 1).End(xlUp).Row
+    If bottomRow > 1 Then
+        wsEfficientFrontier.Range(wsEfficientFrontier.Cells(2, 1), wsEfficientFrontier.Cells(bottomRow, 4)).ClearContents
+    End If
+    
     bottomRow = wsEfficientFrontier.Cells(Rows.Count, 7).End(xlUp).Row
-    wsEfficientFrontier.Range(wsEfficientFrontier.Cells(2, 7), wsEfficientFrontier.Cells(bottomRow, 9)).ClearContents
+    If bottomRow > 1 Then
+        wsEfficientFrontier.Range(wsEfficientFrontier.Cells(2, 7), wsEfficientFrontier.Cells(bottomRow, 9)).ClearContents
+    End If
     
     ' find number of assets
     i = 2
@@ -33,6 +43,9 @@ Sub PortfolioOptimization()
         i = i + 1
     Wend
     nAssets = i - 2
+    outputLiine = 2
+    nOptimizations = 0
+    nSparsing = Round((1567 * Application.WorksheetFunction.Ln(nAssets) - 536) / 300)     ' See comment to "PrintRandomSteps" function.
     
     ReDim covarianceMatrix(nAssets, nAssets): ReDim inWeights(nAssets): ReDim outWeights(nAssets)
     ReDim expectedReturns_day(nAssets)
@@ -55,8 +68,6 @@ Sub PortfolioOptimization()
     Next i
     
     ' 1. Calculate Sharpe ratio for all assets (these values are known from other web sites).
-    ' Show "random" portfolios inside efficient frontier curve.
-    k = 2
     For i = 1 To nAssets
         For j = 1 To nAssets
             If i = j Then
@@ -69,12 +80,6 @@ Sub PortfolioOptimization()
         Call CalculatePortfolioOutputs(nAssets, expectedReturns_day, inWeights, covarianceMatrix, nDays, return_, variance, sharpeRatio)
         
         wsPortfolio.Cells(i + 1, 5) = sharpeRatio
-        
-        wsEfficientFrontier.Cells(k, 7) = (1# + variance) ^ nDays - 1#
-        wsEfficientFrontier.Cells(k, 8) = sharpeRatio
-        wsEfficientFrontier.Cells(k, 9) = (1# + return_) ^ nDays - 1#
-        
-        k = k + 1
     Next i
     
     ' 2. Calculate efficient frontier curve.
@@ -134,7 +139,7 @@ Sub PortfolioOptimization()
     maxSharpeRatio = -1000#
     
     For rt = 0.001 To 0.2 Step 0.001
-        Call GQP(rt, nAssets, expectedReturns_day, covarianceMatrix, lbd, ubd, inWeights, outWeights, mixe, mixsd)
+        Call GQP(rt, nAssets, expectedReturns_day, covarianceMatrix, lbd, ubd, inWeights, outWeights, mixe, mixsd, nDays)
         
         Call CalculatePortfolioOutputs(nAssets, expectedReturns_day, outWeights, covarianceMatrix, nDays, return_, variance, sharpeRatio)
         
@@ -165,6 +170,26 @@ Sub PortfolioOptimization()
     Next i
     
     ScreenUpdatingOn
+End Sub
+
+' Writes out some intermediate steps of optimization to show many possible portfolio outcomes below efficient frontier curve.
+' Every (1567*ln(nAssets)-536) / 300 point will be written out.
+' For nAssets = 9, every 10th point will be written out.
+Sub PrintRandomSteps(nAssets&, expectedReturns_day#(), inWeights#(), covarianceMatrix#(), nDays&, return_#)
+    If nOptimizations = nSparsing Then
+        Dim variance#, sharpeRatio#
+        
+        Call CalculatePortfolioOutputs(nAssets, expectedReturns_day, inWeights, covarianceMatrix, nDays, return_, variance, sharpeRatio)
+        
+        wsEfficientFrontier.Cells(outputLiine, 7) = (1# + variance) ^ nDays - 1#
+        wsEfficientFrontier.Cells(outputLiine, 8) = sharpeRatio
+        wsEfficientFrontier.Cells(outputLiine, 9) = (1# + return_) ^ nDays - 1#
+        
+        outputLiine = outputLiine + 1
+        nOptimizations = 0
+    Else
+        nOptimizations = nOptimizations + 1
+    End If
 End Sub
 
 Sub CalculateCharacteristicsOfUsedWeights()
@@ -242,7 +267,7 @@ End Sub
 '    in Advances in Mathematical Programming and Financial Planning
 '    K.D. Lawrence, J.B. Guerard, Jr., and Gary D. Reeves, Editors
 '    JAI Press, Inc., 1987, pp. 155-170.
-Sub GQP(rt#, nAssets&, e#(), C#(), lbd#(), ubd#(), x0#(), x#(), mixe#, mixsd#)
+Sub GQP(rt#, nAssets&, e#(), C#(), lbd#(), ubd#(), x0#(), x#(), mixe#, mixsd#, nDays&)
     Dim k#(3)
     Dim maxit&, minMUchg#, n#, iterations&, muAdd#, muSub#, aAdd&, aSub&, t1#, t2#, t3#, kmin#, i&, j&
     Dim mu#(), slack#()     ' d#()
@@ -268,6 +293,8 @@ Sub GQP(rt#, nAssets&, e#(), C#(), lbd#(), ubd#(), x0#(), x#(), mixe#, mixsd#)
     iterations = 0
     
     Do While True
+        totalCalls = totalCalls + 1
+        
         ' compute marginal utilities
         For i = 1 To nAssets
             mu(i) = rt * e(i)
@@ -353,6 +380,8 @@ Sub GQP(rt#, nAssets&, e#(), C#(), lbd#(), ubd#(), x0#(), x#(), mixe#, mixsd#)
         ' x = x + ( kmin*d) ;
         x(aAdd) = x(aAdd) + kmin
         x(aSub) = x(aSub) - kmin
+        
+        Call PrintRandomSteps(nAssets, e, x, C, nDays, mixe)
     Loop
 End Sub
 
@@ -398,10 +427,11 @@ Sub InitializePortfolioOptimization()
     Dim period1$, period2$, i&, j&, k&, nAssets&, nColumns&
     Dim outDates_reference() As Date    ' reference dates from AAPL (why? see comments below)
     Dim outDates() As Date
-    Dim outTimeSeries#(), inputTimeSeries#()
+    Dim outTimeSeries#(), inputTimeSeries#(), tmpDate As Date
     Dim timeSeries_AllAssets#()
     Dim columnIsUsed() As Boolean
     Dim rightColumn&, bottomRow&
+    Dim lastDate As Date
     
     ScreenUpdatingOff
     
@@ -448,17 +478,30 @@ Sub InitializePortfolioOptimization()
     
 '   Reading of portfolio assets.
     For i = 1 To nAssets
+        lastDate = outDates_reference(1)
+        
         If wsPortfolio.Cells(i + 1, 2) = "Yahoo" Then
             Call getYahooFinanceData(wsPortfolio.Cells(i + 1, 1), period1, period2, "1d", outDates, inputTimeSeries)
             Call ReadSharesTimeSeries(outDates_reference, outDates, inputTimeSeries, outTimeSeries, wsPortfolio.Cells(i + 1, 1), i + 1)
-        Else
+        End If
+        
+        If InStr(1, wsPortfolio.Cells(i + 1, 2), "ariva") > 0 Then
             Call DeleteFile(Environ$("USERPROFILE") & "\Downloads\wkn_" + CStr(wsPortfolio.Cells(i + 1, 1)) + "_historic.csv")
             
             Call GetAriva_Fund(wsPortfolio.Cells(i + 1, 2), wsPortfolio.Cells(i + 1, 1))
             
-            Call ReadFundsTimeSeries(outDates_reference, outDates, outTimeSeries, wsPortfolio.Cells(i + 1, 1), i + 1)
+            Call ReadFundsTimeSeries(outDates_reference, outTimeSeries, wsPortfolio.Cells(i + 1, 1))
             
             Call DeleteFile(Environ$("USERPROFILE") & "\Downloads\wkn_" + CStr(wsPortfolio.Cells(i + 1, 1)) + "_historic.csv")
+        End If
+        
+        If InStr(1, wsPortfolio.Cells(i + 1, 2), "moex") > 0 Then
+            lastDate = outDates_reference(1)
+            ReDim outTimeSeries(UBound(outDates_reference))
+            
+            While GetMoex(wsPortfolio.Cells(i + 1, 2) & "?iss.json=extended&from=" & Year(lastDate) & "-" & Month(lastDate) & "-" & Day(lastDate), _
+                    wsPortfolio.Cells(i + 1, 1), outDates_reference, outTimeSeries, lastDate)
+            Wend
         End If
         
         ' Add time series of an asset to the "timeSeries_AllAssets"
@@ -523,83 +566,4 @@ Sub InitializePortfolioOptimization()
     Application.StatusBar = ""
     
     ScreenUpdatingOn
-End Sub
-
-' In time series only close price is used.
-Sub ReadFundsTimeSeries(outDates_reference() As Date, outDates() As Date, outTimeSeries#(), ticker$, outputLine&)
-    Dim fileName As String
-    Dim i%, j%
-    Dim line As String
-    Dim arrayOfLines() As String
-    Dim arrayOfElements() As String
-    Dim tmpDate As Date
-    Dim decimalSeparator$
-    
-    ReDim outTimeSeries(UBound(outDates_reference))
-    
-    fileName = Environ$("USERPROFILE") & "\Downloads\wkn_" + ticker + "_historic.csv"
-    
-    Call Sleep(2000)
-    
-    ' open CSV
-    Open fileName For Input As #1   ' Open file for input
-    Line Input #1, line
-    arrayOfLines = Split(line, vbLf)
-    Close #1 ' Close file.
-    
-    decimalSeparator = Application.decimalSeparator
-    
-    For i = 1 To UBound(arrayOfLines)
-        arrayOfElements = Split(arrayOfLines(i), ";")
-        
-        If arrayOfLines(i) = "" Then
-            Exit Sub
-        End If
-        
-        tmpDate = CDate(arrayOfElements(0))
-        
-        ' search for
-        For j = 1 To UBound(outDates_reference)
-            ' look for the same dates:
-            If tmpDate = outDates_reference(j) Then
-                If arrayOfElements(4) = "" Then
-                    outTimeSeries(j) = Undefined
-                Else
-                    outTimeSeries(j) = CDbl(Replace(arrayOfElements(4), ".", decimalSeparator))
-                End If
-                Exit For
-            End If
-        Next j
-    Next i
-End Sub
-
-' In time series only close price is used.
-Sub ReadSharesTimeSeries(outDates_reference() As Date, outDates() As Date, inputTimeSeries#(), outTimeSeries#(), ticker$, outputLine&)
-    Dim i&, j&
-    
-    ReDim outTimeSeries(UBound(outDates_reference))
-    
-    For i = 1 To UBound(outDates)
-        ' search for
-        For j = 1 To UBound(outDates_reference)
-            ' look for the same dates:
-            If outDates(i) = outDates_reference(j) Then
-                If inputTimeSeries(i, 4) = Undefined Then
-                    outTimeSeries(j) = Undefined
-                Else
-                    outTimeSeries(j) = inputTimeSeries(i, 4)
-                End If
-                Exit For
-            End If
-        Next j
-    Next i
-End Sub
-
-Sub DeleteFile(ByVal FileToDelete As String)
-   If Dir(FileToDelete) <> "" Then
-      ' First remove readonly attribute, if set
-      SetAttr FileToDelete, vbNormal
-      ' Then delete the file
-      Kill FileToDelete
-   End If
 End Sub

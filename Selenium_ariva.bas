@@ -70,3 +70,60 @@ Function CreateObject2(typeName As String) As Object
     End If
     Set CreateObject2 = domain.CreateInstanceFrom(Environ("USERPROFILE") & "\AppData\Local\SeleniumBasic\Selenium.dll", typeName).Unwrap
 End Function
+
+Sub DeleteFile(ByVal FileToDelete As String)
+   If Dir(FileToDelete) <> "" Then
+      ' First remove readonly attribute, if set
+      SetAttr FileToDelete, vbNormal
+      ' Then delete the file
+      Kill FileToDelete
+   End If
+End Sub
+
+' In time series only close price is used.
+Sub ReadFundsTimeSeries(outDates_reference() As Date, outTimeSeries#(), ticker$)
+    Dim fileName As String
+    Dim i%, j%
+    Dim line As String
+    Dim arrayOfLines() As String
+    Dim arrayOfElements() As String
+    Dim tmpDate As Date
+    Dim decimalSeparator$
+    
+    ReDim outTimeSeries(UBound(outDates_reference))
+    
+    fileName = Environ$("USERPROFILE") & "\Downloads\wkn_" + ticker + "_historic.csv"
+    
+    Call Sleep(2000)
+    
+    ' open CSV
+    Open fileName For Input As #1   ' Open file for input
+    Line Input #1, line
+    arrayOfLines = Split(line, vbLf)
+    Close #1 ' Close file.
+    
+    decimalSeparator = Application.decimalSeparator
+    
+    For i = 1 To UBound(arrayOfLines)
+        arrayOfElements = Split(arrayOfLines(i), ";")
+        
+        If arrayOfLines(i) = "" Then
+            Exit Sub
+        End If
+        
+        tmpDate = CDate(arrayOfElements(0))
+        
+        ' search for
+        For j = 1 To UBound(outDates_reference)
+            ' look for the same dates:
+            If tmpDate = outDates_reference(j) Then
+                If arrayOfElements(4) = "" Then
+                    outTimeSeries(j) = Undefined
+                Else
+                    outTimeSeries(j) = CDbl(arrayOfElements(4))
+                End If
+                Exit For
+            End If
+        Next j
+    Next i
+End Sub
