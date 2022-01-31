@@ -55,10 +55,18 @@ Sub PortfolioOptimization()
     
     nDays = wsReturns.Cells(2, Columns.Count).End(xlToLeft).Column - 1
     For i = 1 To nAssets
+        ' Corrected average returns.
+        ' Example:
+        ' Let the time series of assset be: 1.0, 1.1, 1.0.
+        ' Expected avrage return is, therefore 0%.
+        ' The daily returns are (1.1 - 1.0) / 1.0 = 1/10 and (1.0 - 1.1) / 1.1 = -1/11.
+        ' The arithmetic average of both returns is: (1/10 - 1/11)/2 = 1/110. Not 0!
+        ' The correct averaging is: ((1.0 + 1/10)*(1.0 - 1/11) - 1.0)^(1/2) = (11/10*10/11 - 1.0)^(1/2) = 0!
+        expectedReturns_day(i) = 1#
         For j = 1 To nDays
-            expectedReturns_day(i) = expectedReturns_day(i) + wsReturns.Cells(i + 1, j + 1)
+            expectedReturns_day(i) = expectedReturns_day(i) * (1 + wsReturns.Cells(i + 1, j + 1))
         Next j
-        expectedReturns_day(i) = expectedReturns_day(i) / nDays
+        expectedReturns_day(i) = expectedReturns_day(i) ^ (1 / nDays) - 1
         
         lbd(i) = wsPortfolio.Cells(i + 1, 3)
         ubd(i) = wsPortfolio.Cells(i + 1, 4)
@@ -220,7 +228,7 @@ Sub CalculateCharacteristicsOfUsedWeights()
     sumWeights = 0#
     For i = 1 To nAssets
         expectedReturns_year(i) = (wsTimeSeries.Cells(i + 1, nDays + 1) - wsTimeSeries.Cells(i + 1, 2)) / wsTimeSeries.Cells(i + 1, 2)
-        expectedReturns_day(i) = expectedReturns_year(i) / nDays
+        expectedReturns_day(i) = expectedReturns_year(i) ^ (1 / nDays) - 1#
         inWeights(i) = wsPortfolio.Cells(i + 1, 6)
         sumWeights = sumWeights + inWeights(i)
         For j = 1 To nAssets
